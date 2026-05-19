@@ -15,6 +15,7 @@ import {
 import { Fragment, useMemo } from "react";
 import { PluginSlotOutlet, usePluginSlots } from "@/plugins/slots";
 import { PluginLauncherOutlet, usePluginLaunchers } from "@/plugins/launchers";
+import { LanguageSelector } from "./LanguageSelector";
 
 type GlobalToolbarContext = { companyId: string | null; companyPrefix: string | null };
 
@@ -23,7 +24,7 @@ function GlobalToolbarPlugins({ context }: { context: GlobalToolbarContext }) {
   const { launchers } = usePluginLaunchers({ placementZones: ["globalToolbarButton"], companyId: context.companyId, enabled: !!context.companyId });
   if (slots.length === 0 && launchers.length === 0) return null;
   return (
-    <div className="flex items-center gap-1 ml-auto shrink-0 pl-2">
+    <div className="flex items-center gap-1 shrink-0 pl-2">
       <PluginSlotOutlet slotTypes={["globalToolbarButton"]} context={context} className="flex items-center gap-1" />
       <PluginLauncherOutlet placementZones={["globalToolbarButton"]} context={context} className="flex items-center gap-1" />
     </div>
@@ -45,6 +46,13 @@ export function BreadcrumbBar() {
 
   const globalToolbarSlots = <GlobalToolbarPlugins context={globalToolbarSlotContext} />;
 
+  const rightActions = (
+    <div className="flex items-center gap-2 ml-auto shrink-0 pl-2">
+      <LanguageSelector />
+      {globalToolbarSlots}
+    </div>
+  );
+
   if (isMobile && mobileToolbar) {
     return (
       <div className="border-b border-border px-2 h-12 shrink-0 flex items-center">
@@ -56,7 +64,7 @@ export function BreadcrumbBar() {
   if (breadcrumbs.length === 0) {
     return (
       <div className="border-b border-border px-4 md:px-6 h-12 shrink-0 flex items-center justify-end">
-        {globalToolbarSlots}
+        {rightActions}
       </div>
     );
   }
@@ -83,7 +91,7 @@ export function BreadcrumbBar() {
             {breadcrumbs[0].label}
           </h1>
         </div>
-        {globalToolbarSlots}
+        {rightActions}
       </div>
     );
   }
@@ -115,7 +123,7 @@ export function BreadcrumbBar() {
           </BreadcrumbList>
         </Breadcrumb>
       </div>
-      {globalToolbarSlots}
+      {rightActions}
     </div>
   );
 }

@@ -11,7 +11,7 @@ const DRIZZLE_MIGRATIONS_TABLE = "__drizzle_migrations";
 const MIGRATIONS_JOURNAL_JSON = fileURLToPath(new URL("./migrations/meta/_journal.json", import.meta.url));
 
 function createUtilitySql(url: string) {
-  return postgres(url, { max: 1, onnotice: () => {} });
+  return postgres(url, { max: 1, connect_timeout: 3, onnotice: () => {} });
 }
 
 function isSafeIdentifier(value: string): boolean {
@@ -61,7 +61,7 @@ export async function getPostgresDataDirectory(url: string): Promise<string | nu
   } catch {
     return null;
   } finally {
-    await sql.end();
+    await sql.end({ timeout: 1 });
   }
 }
 
@@ -275,7 +275,7 @@ async function applyPendingMigrationsManually(
       });
     }
   } finally {
-    await sql.end();
+    await sql.end({ timeout: 1 });
   }
 }
 
@@ -285,8 +285,12 @@ async function mapHashesToMigrationFiles(migrationFiles: string[]): Promise<Map<
   await Promise.all(
     migrationFiles.map(async (migrationFile) => {
       const content = await readMigrationFileContent(migrationFile);
-      const hash = createHash("sha256").update(content).digest("hex");
-      mapped.set(hash, migrationFile);
+      const contentLf = content.replaceAll("\r\n", "\n");
+      const contentCrlf = contentLf.replaceAll("\n", "\r\n");
+      const hashLf = createHash("sha256").update(contentLf).digest("hex");
+      const hashCrlf = createHash("sha256").update(contentCrlf).digest("hex");
+      mapped.set(hashLf, migrationFile);
+      mapped.set(hashCrlf, migrationFile);
     }),
   );
 
@@ -445,8 +449,7 @@ async function loadAppliedMigrations(
       // Best-effort: when all hashes resolve, this is authoritative.
       if (appliedFromHashes.length === rows.length) return appliedFromHashes;
 
-      // Partial hash resolution can happen when files have changed; return what we can trust.
-      return appliedFromHashes;
+      // Partial hash resolution can happen when files have changed; fall through to journal/id fallbacks.
     }
 
     // Fallback only when hashes are unavailable/unresolved.
@@ -567,7 +570,7 @@ export async function reconcilePendingMigrationHistory(
       repairedMigrations.push(migrationFile);
     }
   } finally {
-    await sql.end();
+    await sql.end({ timeout: 1 });
   }
 
   const refreshed = await inspectMigrations(url);
@@ -653,7 +656,7 @@ export async function inspectMigrations(url: string): Promise<MigrationState> {
       reason: "pending-migrations",
     };
   } finally {
-    await sql.end();
+    await sql.end({ timeout: 1 });
   }
 }
 
@@ -667,7 +670,7 @@ export async function applyPendingMigrations(url: string): Promise<void> {
       const db = drizzlePg(sql);
       await migratePg(db, { migrationsFolder: MIGRATIONS_FOLDER });
     } finally {
-      await sql.end();
+      await sql.end({ timeout: 1 });
     }
 
     let bootstrappedState = await inspectMigrations(url);
@@ -750,7 +753,7 @@ export async function migratePostgresIfEmpty(url: string): Promise<MigrationBoot
 
     return { migrated: true, reason: "migrated-empty-db", tableCount: 0 };
   } finally {
-    await sql.end();
+    await sql.end({ timeout: 1 });
   }
 }
 
@@ -772,7 +775,7 @@ export async function ensurePostgresDatabase(
     await sql.unsafe(`create database "${databaseName}" encoding 'UTF8' lc_collate 'C' lc_ctype 'C' template template0`);
     return "created";
   } finally {
-    await sql.end();
+    await sql.end({ timeout: 1 });
   }
 }
 
