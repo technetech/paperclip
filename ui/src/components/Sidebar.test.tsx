@@ -150,6 +150,19 @@ describe("Sidebar", () => {
     });
   });
 
+  it("renders a vertically scrollable sidebar nav", async () => {
+    mockInstanceSettingsApi.getExperimental.mockResolvedValue({ enableIsolatedWorkspaces: false });
+    const root = await renderSidebar();
+
+    const nav = container.querySelector("nav");
+    expect(nav?.className).toContain("overflow-y-auto");
+    expect(nav?.className).toContain("touch-pan-y");
+
+    await act(async () => {
+      root.unmount();
+    });
+  });
+
   it("shows the Workspaces link when isolated workspaces are enabled", async () => {
     mockInstanceSettingsApi.getExperimental.mockResolvedValue({ enableIsolatedWorkspaces: true });
     const root = await renderSidebar();
